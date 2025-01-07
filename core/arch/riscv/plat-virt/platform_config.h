@@ -40,6 +40,23 @@
 #define APLIC_NUM_IDC         	   4
 #endif
 
+/*XLEN-1            > (HART Index MSB)                  12    0
+  |                  |                                  |     |
+  -------------------------------------------------------------
+  |xxxxxx|Group Index|xxxxxxxxxxx|HART Index|Guest Index|  0  |
+  -------------------------------------------------------------
+*/
+/* IMSIC */
+#ifndef IMSIC_BASE
+#define IMSIC_BASE		0x28000000
+#define IMSIC_SIZE		0x04000000
+#define IMSIC_NUM_IDS	0xFF
+#define IMSIC_GUEST_INDEX_BITS 0x03
+#define IMSIC_HART_INDEX_BITS 0x02
+#define IMSIC_GROUP_INDEX_BITS 0x01
+#define IMSIC_GROUP_INDEX_SHIFT 0x18
+#endif
+
 /* UART */
 #ifndef UART0_BASE
 #define UART0_BASE		0x10000000

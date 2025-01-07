@@ -42,6 +42,18 @@ void boot_secondary_init_intc(void)
 }
 #endif /* CFG_RISCV_APLIC */
 
+#ifdef CFG_RISCV_IMSIC
+void boot_primary_init_intc(void)
+{
+	imsic_init(IMSIC_BASE);
+}
+
+void boot_secondary_init_intc(void)
+{
+	imsic_hart_init();
+}
+#endif /* CFG_RISCV_IMSIC */
+
 void plat_console_init(void)
 {
 	ns16550_init(&console_data, UART0_BASE, IO_WIDTH_U8, 0);
