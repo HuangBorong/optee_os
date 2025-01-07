@@ -6,6 +6,7 @@
 #include <console.h>
 #include <drivers/ns16550.h>
 #include <drivers/plic.h>
+#include <drivers/aplic.h>
 #include <kernel/boot.h>
 #include <kernel/tee_common_otp.h>
 #include <platform_config.h>
@@ -28,6 +29,18 @@ void boot_secondary_init_intc(void)
 	plic_hart_init();
 }
 #endif /* CFG_RISCV_PLIC */
+
+#ifdef CFG_RISCV_APLIC
+void boot_primary_init_intc(void)
+{
+	aplic_init(APLIC_BASE);
+}
+
+void boot_secondary_init_intc(void)
+{
+	aplic_hart_init();
+}
+#endif /* CFG_RISCV_APLIC */
 
 void plat_console_init(void)
 {

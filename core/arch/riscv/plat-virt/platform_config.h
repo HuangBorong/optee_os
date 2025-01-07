@@ -32,6 +32,14 @@
 #define PLIC_NUM_SOURCES	0x5f
 #endif
 
+/* APLIC */
+#ifndef APLIC_BASE
+#define APLIC_BASE		  0x0d000000
+#define APLIC_SIZE		      0x8000
+#define APLIC_NUM_SOURCE	    0x60
+#define APLIC_NUM_IDC         	   4
+#endif
+
 /* UART */
 #ifndef UART0_BASE
 #define UART0_BASE		0x10000000
