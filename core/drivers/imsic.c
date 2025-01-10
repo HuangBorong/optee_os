@@ -35,6 +35,8 @@
 
 #define IMSIC_IPI_ID 1
 
+struct aplic_msi;
+
 struct imsic_interrupt_file {
 	paddr_t paddr;
 	vaddr_t vaddr;
@@ -49,6 +51,7 @@ struct imsic_data {
 	uint32_t group_index_bits;
 	uint32_t group_index_shift;
 	struct imsic_interrupt_file interrupt_files[CFG_TEE_CORE_NB_CORE];
+	struct aplic_msi* aplic;
 	struct itr_chip chip;
 };
 
