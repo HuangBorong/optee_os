@@ -7,6 +7,8 @@
 #include <drivers/ns16550.h>
 #include <drivers/plic.h>
 #include <drivers/aplic.h>
+#include <drivers/aplic_priv.h>
+#include <drivers/imsic.h>
 #include <kernel/boot.h>
 #include <kernel/tee_common_otp.h>
 #include <platform_config.h>
@@ -17,6 +19,10 @@ register_ddr(DRAM_BASE, DRAM_SIZE);
 
 register_phys_mem_pgdir(MEM_AREA_IO_NSEC, UART0_BASE,
 			CORE_MMU_PGDIR_SIZE);
+register_phys_mem_pgdir(MEM_AREA_IO_SEC, APLIC_BASE,
+			APLIC_SIZE);
+register_phys_mem_pgdir(MEM_AREA_IO_SEC, IMSIC_BASE, 
+			IMSIC_SIZE);
 
 #ifdef CFG_RISCV_PLIC
 void boot_primary_init_intc(void)
@@ -42,17 +48,19 @@ void boot_secondary_init_intc(void)
 }
 #endif /* CFG_RISCV_APLIC */
 
-#ifdef CFG_RISCV_IMSIC
+#if defined(CFG_RISCV_APLIC_MSI) && defined(CFG_RISCV_IMSIC)
 void boot_primary_init_intc(void)
 {
+	aplic_init(APLIC_BASE);
 	imsic_init(IMSIC_BASE);
 }
 
 void boot_secondary_init_intc(void)
 {
+	aplic_hart_init();
 	imsic_hart_init();
 }
-#endif /* CFG_RISCV_IMSIC */
+#endif
 
 void plat_console_init(void)
 {

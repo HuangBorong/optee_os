@@ -37,7 +37,7 @@
 #define APLIC_BASE		  0x0d000000
 #define APLIC_SIZE		      0x8000
 #define APLIC_NUM_SOURCE	    0x60
-#define APLIC_NUM_IDC         	   4
+#define APLIC_NUM_IDC         	 4
 #endif
 
 /*XLEN-1            > (HART Index MSB)                  12    0
@@ -49,7 +49,7 @@
 /* IMSIC */
 #ifndef IMSIC_BASE
 #define IMSIC_BASE		0x28000000
-#define IMSIC_SIZE		0x04000000
+#define IMSIC_SIZE		0x00004000
 #define IMSIC_NUM_IDS	0xFF
 #define IMSIC_GUEST_INDEX_BITS 0x03
 #define IMSIC_HART_INDEX_BITS 0x02

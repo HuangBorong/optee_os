@@ -1,12 +1,14 @@
-#ifndef __DRIVERS_APLIC_H
-#define __DRIVERS_APLIC_H
+#ifndef __DRIVERS_APLIC_PRIV_H
+#define __DRIVERS_APLIC_PRIV_H
 
 #include <io.h>
 #include <util.h>
 #include <types_ext.h>
+#include <kernel/interrupt.h>
 
 #define APLIC_MAX_SOURCE		              1024
 #define APLIC_IRQBITS_PER_REG		            32
+#define APLIC_COMPATIBLE  			 "riscv,aplic"
 
 #define APLIC_DOMAINCFG			            0x0000  // domaincfg
 #define APLIC_DOMAINCFG_RDONLY		    0x80000000
@@ -60,32 +62,36 @@
 #define APLIC_TARGET_IPRIO		    (APLIC_TARGET_IPRIO_MASK << \
 					     APLIC_TARGET_IPRIO_SHIFT)  // bits 7:0
 
-struct aplic_priv
-{
+struct aplic_data {
     vaddr_t     aplic_base;
+	uint32_t          size;
+	bool     targets_mmode;
+	uint32_t 	   num_idc;
 	uint32_t 	num_source;
+	struct itr_chip   chip;
 };
 
-static inline void aplic_enable_interrupt(struct aplic_priv* priv, uint32_t source)
+static inline void aplic_enable_interrupt(struct aplic_data* aplic, uint32_t source)
 {
-	io_write32(priv->aplic_base + APLIC_SETIENUM, source);
+	io_write32(aplic->aplic_base + APLIC_SETIENUM, source);
 }
 
-static inline void aplic_disable_interrupt(struct aplic_priv* priv, uint32_t source)
+static inline void aplic_disable_interrupt(struct aplic_data* aplic, uint32_t source)
 {
-	io_write32(priv->aplic_base + APLIC_CLRIENUM, source);
+	io_write32(aplic->aplic_base + APLIC_CLRIENUM, source);
 }
 
-static inline void aplic_set_pending(struct aplic_priv* priv, uint32_t source)
+static inline void aplic_set_pending(struct aplic_data* aplic, uint32_t source)
 {
-	io_write32(priv->aplic_base + APLIC_SETIPNUM, source);
+	io_write32(aplic->aplic_base + APLIC_SETIPNUM, source);
 }
 
-static inline void aplic_clear_pending(struct aplic_priv* priv, uint32_t source)
+static inline void aplic_clear_pending(struct aplic_data* aplic, uint32_t source)
 {
-	io_write32(priv->aplic_base + APLIC_CLRIPNUM, source);
+	io_write32(aplic->aplic_base + APLIC_CLRIPNUM, source);
 }
 
-TEE_Result aplic_set_source_mode(struct aplic_priv* priv, size_t it, uint32_t type);
+TEE_Result aplic_init_from_device_tree(struct aplic_data* aplic);
+TEE_Result aplic_set_source_mode(struct aplic_data* aplic, uint32_t source, uint32_t type);
 
-#endif /*__DRIVERS_APLIC_H*/
+#endif /* __DRIVERS_APLIC_PRIV_H */

@@ -10,8 +10,8 @@
 #include <kernel/interrupt.h>
 #include <mm/core_memprot.h>
 #include <mm/core_mmu.h>
+#include <drivers/aplic.h>
 #include <drivers/aplic_priv.h>
-#include <drivers/aplic_direct.h>
 
 #define APLIC_MAX_IDC			           BIT(14)  // 16384
 #define APLIC_IDC_BASE			            0x4000
@@ -41,26 +41,17 @@
 #define APLIC_DISABLE_ITHRESHOLD	1
 #define APLIC_ENABLE_ITHRESHOLD		0
 
-struct aplic_direct
-{
-    struct aplic_priv   priv;
-    uint32_t 		 num_idc;
-	struct itr_chip     chip;
-};
-
-static struct aplic_direct aplic_direct __nex_bss;
-
-register_phys_mem_pgdir(MEM_AREA_IO_SEC, APLIC_BASE, APLIC_SIZE);
+static struct aplic_data aplic_data __nex_bss;
 
 static vaddr_t aplic_get_idc_base(void)
 {	
-	struct aplic_direct *aplic = &aplic_direct;
+	struct aplic_data *aplic = &aplic_data;
 	size_t hartid = get_core_pos();
 
-	return aplic->priv.aplic_base + APLIC_IDC_BASE + hartid * APLIC_IDC_SIZE;
+	return aplic->aplic_base + APLIC_IDC_BASE + hartid * APLIC_IDC_SIZE;
 }
 
-static void aplic_set_target(struct aplic_direct* aplic, uint32_t source, uint32_t hart_idx, uint32_t iprio)
+static void aplic_set_target(struct aplic_data* aplic, uint32_t source, uint32_t hart_idx, uint32_t iprio)
 {
 	vaddr_t target;
 	uint32_t val = 0;
@@ -68,13 +59,12 @@ static void aplic_set_target(struct aplic_direct* aplic, uint32_t source, uint32
     val = (hart_idx & APLIC_TARGET_HART_IDX_MASK) << APLIC_TARGET_HART_IDX_SHIFT;
     val |= (iprio & APLIC_TARGET_IPRIO_MASK) << APLIC_TARGET_IPRIO_SHIFT;
 
-	target = aplic->priv.aplic_base + APLIC_TARGET_BASE + (source - 1) * sizeof(uint32_t);
+	target = aplic->aplic_base + APLIC_TARGET_BASE + (source - 1) * sizeof(uint32_t);
 	io_write32(target, val);
 }
 
-static void aplic_init_base_addr(struct aplic_direct *aplic, paddr_t aplic_base_pa)
+static void aplic_init_base_addr(struct aplic_data *aplic, paddr_t aplic_base_pa)
 {
-    struct aplic_priv* priv = &aplic->priv;
 	vaddr_t aplic_base = 0;
 
 	assert(cpu_mmu_enabled());
@@ -84,59 +74,53 @@ static void aplic_init_base_addr(struct aplic_direct *aplic, paddr_t aplic_base_
 	if (!aplic_base)
 		panic();
 
-	priv->aplic_base = aplic_base;
-	priv->num_source = APLIC_NUM_SOURCE;
-
+	aplic->aplic_base = aplic_base;
+	aplic->num_source = APLIC_NUM_SOURCE;
 	aplic->num_idc = APLIC_NUM_IDC;
-	aplic->chip.ops = &aplic_ops;
 }
 
 static void aplic_op_add(struct itr_chip *chip, size_t it, uint32_t type, uint32_t prio)
 {
-    struct aplic_direct* aplic = container_of(chip, struct aplic_direct, chip);
-    struct aplic_priv* priv = &aplic->priv;
+    struct aplic_data* aplic = container_of(chip, struct aplic_data, chip);
     size_t hartid = get_core_pos();
 
-    if (!it || it > priv->num_source)
+    if (!it || it > aplic->num_source)
         panic();
     
-    aplic_disable_interrupt(priv, it);
-	if (aplic_set_source_mode(priv, it, type))
+    aplic_disable_interrupt(aplic, it);
+	if (aplic_set_source_mode(aplic, it, type))
 		panic();
     aplic_set_target(aplic, it, hartid, prio);
 }
 
 static void aplic_op_enable(struct itr_chip *chip, size_t it)
 {
-	struct aplic_direct* aplic = container_of(chip, struct aplic_direct, chip);
-    struct aplic_priv* priv = &aplic->priv;
+	struct aplic_data* aplic = container_of(chip, struct aplic_data, chip);
 
-	if (!it || it > priv->num_source)
+	if (!it || it > aplic->num_source)
         panic();
 
-	aplic_enable_interrupt(priv, it);
+	aplic_enable_interrupt(aplic, it);
 }
 
 static void aplic_op_disable(struct itr_chip *chip, size_t it)
 {
-	struct aplic_direct* aplic = container_of(chip, struct aplic_direct, chip);
-    struct aplic_priv* priv = &aplic->priv;
+	struct aplic_data* aplic = container_of(chip, struct aplic_data, chip);;
 
-	if (!it || it > priv->num_source)
+	if (!it || it > aplic->num_source)
         panic();
 
-	aplic_disable_interrupt(priv, it);
+	aplic_disable_interrupt(aplic, it);
 }
 
 static void aplic_op_raise_pi(struct itr_chip *chip, size_t it)
 {
-	struct aplic_direct* aplic = container_of(chip, struct aplic_direct, chip);
-    struct aplic_priv* priv = &aplic->priv;
+	struct aplic_data* aplic = container_of(chip, struct aplic_data, chip);
 
-	if (!it || it > priv->num_source)
+	if (!it || it > aplic->num_source)
         panic();
 
-	aplic_set_pending(priv, it);
+	aplic_set_pending(aplic, it);
 }
 
 static const struct itr_ops aplic_ops = {
@@ -150,21 +134,27 @@ static const struct itr_ops aplic_ops = {
 	.set_affinity = NULL
 };
 
-void aplic_direct_init(paddr_t aplic_base_pa)
+void aplic_init(paddr_t aplic_base_pa)
 {
-	struct aplic_direct *aplic = &aplic_direct;
-    struct aplic_priv* priv = &aplic->priv;
+	struct aplic_data *aplic = &aplic_data;
 	uint32_t id = 0;
 
-	aplic_init_base_addr(aplic, aplic_base_pa);
+	if (IS_ENABLED(CFG_DT)) {
+		aplic_init_from_device_tree(aplic);
+	}
+	else {
+		aplic_init_base_addr(aplic, aplic_base_pa);
+	}
 
-	io_write32(priv->aplic_base + APLIC_DOMAINCFG, APLIC_DOMAINCFG_IE);
+	aplic->chip.ops = &aplic_ops;
+
+	io_write32(aplic->aplic_base + APLIC_DOMAINCFG, APLIC_DOMAINCFG_IE);
 	aplic_hart_init();
 
-	interrupt_main_init(&aplic_direct.chip);
+	interrupt_main_init(&aplic_data.chip);
 }
 
-void aplic_direct_hart_init(void)
+void aplic_hart_init(void)
 {
 	vaddr_t idc_base = aplic_get_idc_base();
 
@@ -172,21 +162,20 @@ void aplic_direct_hart_init(void)
 	io_write32(idc_base + APLIC_IDC_ITHRESHOLD, APLIC_ENABLE_ITHRESHOLD);
 }
 
-void aplic_direct_it_handle(void)
+void aplic_it_handle(void)
 {
-	struct aplic_direct *aplic = &aplic_direct;
-    struct aplic_priv* priv = &aplic->priv;
+	struct aplic_data *aplic = &aplic_data;
 	uint32_t id = 0;
 
-	id = io_read32(priv->aplic_base + APLIC_IDC_CLAIMI);
+	id = io_read32(aplic->aplic_base + APLIC_IDC_CLAIMI);
 	id >>= APLIC_IDC_TOPI_ID_SHIFT;
 
-	if (id <= priv->num_source)
+	if (id <= aplic->num_source)
 		interrupt_call_handlers(&aplic->chip, id);
 	else
 		DMSG("ignoring interrupt %" PRIu32, id);
 }
 
-void aplic_direct_dump_state(void)
+void aplic_dump_state(void)
 {
 }
