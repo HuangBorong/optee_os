@@ -72,4 +72,10 @@ void interrupt_main_handler(void)
 {
 	if (IS_ENABLED(CFG_RISCV_PLIC))
 		plic_it_handle();
+	else if (IS_ENABLED(CFG_RISCV_APLIC)) {
+		aplic_it_handle();
+	}
+	else if (IS_ENABLED(CFG_RISCV_APLIC_MSI) && IS_ENABLED(CFG_RISCV_IMSIC)) {
+		imsic_it_handle();
+	}	
 }
