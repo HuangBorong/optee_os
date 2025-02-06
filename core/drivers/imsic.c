@@ -232,7 +232,7 @@ static void imsic_init_base_addr(paddr_t imsic_base_pa)
 
 	imsic_base = core_mmu_get_va(imsic_base_pa, MEM_AREA_IO_SEC,
 				     IMSIC_SIZE);
-	if (imsic_base)
+	if (!imsic_base)
 		panic();
 
 	imsic->imsic_base = imsic_base;
