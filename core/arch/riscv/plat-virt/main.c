@@ -4,10 +4,10 @@
  */
 
 #include <console.h>
-#include <drivers/ns16550.h>
-#include <drivers/plic.h>
 #include <drivers/aplic.h>
 #include <drivers/imsic.h>
+#include <drivers/ns16550.h>
+#include <drivers/plic.h>
 #include <kernel/boot.h>
 #include <kernel/tee_common_otp.h>
 #include <platform_config.h>

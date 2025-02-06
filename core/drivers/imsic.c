@@ -1,53 +1,56 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
+ * Copyright (c) 2021 Western Digital Corporation or its affiliates.
+ * Copyright (c) 2022 Ventana Micro Systems Inc.
  * Copyright (c) 2025 Beijing Institute of Open Source Chip (BOSC)
+ *
+ * Authors:
+ *   Anup Patel <anup.patel@wdc.com>
+ *   Huang Borong <huangborong@bosc.ac.cn>
  */
 
-#include <io.h>
-#include <util.h>
-#include <trace.h>
-#include <riscv.h>
 #include <compiler.h>
-#include <mm/core_mmu.h>
 #include <drivers/imsic.h>
+#include <io.h>
 #include <kernel/dt.h>
-#include <kernel/dt_driver.h>
 #include <kernel/interrupt.h>
-#include <platform_config.h>
 #include <libfdt.h>
+#include <mm/core_mmu.h>
+#include <platform_config.h>
+#include <riscv.h>
 #include <string.h>
+#include <trace.h>
+#include <util.h>
 
-#define IMSIC_MMIO_PAGE_SHIFT		12
-#define IMSIC_MMIO_PAGE_SZ		BIT(IMSIC_MMIO_PAGE_SHIFT)
+#define IMSIC_MMIO_PAGE_SHIFT     12
+#define IMSIC_MMIO_PAGE_SZ        BIT(IMSIC_MMIO_PAGE_SHIFT)
 
-#define IMSIC_DISABLE_EIDELIVERY		0
-#define IMSIC_ENABLE_EIDELIVERY			1
+#define IMSIC_MIN_ID              63
+#define IMSIC_MAX_ID              2048
 
-#define IMSIC_DISABLE_EITHRESHOLD		1
-#define IMSIC_ENABLE_EITHRESHOLD		0
+#define IMSIC_TOPEI_ID_SHIFT      16
 
-#define IMSIC_INTERRUPT_FILE_SIZE		0x1000
+#define IMSIC_IPI_ID              1
 
-#define IMSIC_MIN_ID			63
-#define IMSIC_MAX_ID			2048
-
-#define IMSIC_TOPEI_ID_SHIFT		16
-
-#define IMSIC_IPI_ID			1
-
-#define IMSIC_COMPATIBLE "riscv,imsics"
+#define IMSIC_COMPATIBLE          "riscv,imsics"
 
 /* IMSIC CSRs */
-#define IMSIC_EIDELIVERY		0x70
-#define IMSIC_EITHRESHOLD		0x72
+#define IMSIC_EIDELIVERY          0x70
+#define IMSIC_EITHRESHOLD         0x72
 
-#define IMSIC_EIP0				0x80
-#define IMSIC_EIP63				0xBF
-#define IMSIC_EIPx_BITS			32
+#define IMSIC_EIP0                0x80
+#define IMSIC_EIP63               0xBF
+#define IMSIC_EIPx_BITS           32
 
-#define IMSIC_EIE0				0xC0
-#define IMSIC_EIE63				0xFF
-#define IMSIC_EIEx_BITS			32
+#define IMSIC_EIE0                0xC0
+#define IMSIC_EIE63               0xFF
+#define IMSIC_EIEx_BITS           32
+
+#define IMSIC_DISABLE_EIDELIVERY  0
+#define IMSIC_ENABLE_EIDELIVERY   1
+
+#define IMSIC_DISABLE_EITHRESHOLD 1
+#define IMSIC_ENABLE_EITHRESHOLD  0
 
 static struct imsic_data imsic_data __nex_bss;
 
@@ -55,29 +58,31 @@ static struct imsic_data imsic_data __nex_bss;
  * The IMSIC CSRs need to be indirectly accessed through
  * the *iselect(miselect/siselect) and *ireg(mireg/sireg) CSRs.
  */
-static inline void imsic_csr_write(unsigned long reg, unsigned long val)
-{
-	write_csr(CSR_XISELECT, reg);
-	write_csr(CSR_XIREG, val);
-}
+#define imsic_csr_write(__c, __v)	\
+do { \
+	write_csr(CSR_XISELECT, __c); \
+	write_csr(CSR_XIREG, __v); \
+} while (0)
 
-static inline unsigned long imsic_csr_read(unsigned long reg)
-{
-	write_csr(CSR_XISELECT, reg);
-	return read_csr(CSR_XIREG);
-}
+#define imsic_csr_read(__c)	\
+({ \
+	unsigned long __v; \
+	write_csr(CSR_XISELECT, __c); \
+	__v = read_csr(CSR_XIREG); \
+	__v; \
+})
 
-static inline void imsic_csr_set(unsigned long reg, unsigned long val)
-{
-	write_csr(CSR_XISELECT, reg);
-	set_csr(CSR_XIREG, val);
-}
+#define imsic_csr_set(__c, __v)		\
+do { \
+	write_csr(CSR_XISELECT, __c); \
+	set_csr(CSR_XIREG, __v); \
+} while (0)
 
-static inline void imsic_csr_clear(unsigned long reg, unsigned long val)
-{
-	write_csr(CSR_XISELECT, reg);
-	clear_csr(CSR_XIREG, val);
-}
+#define imsic_csr_clear(__c, __v)	\
+do { \
+	write_csr(CSR_XISELECT, __c); \
+	clear_csr(CSR_XIREG, __v); \
+} while (0)
 
 static inline void imsic_enable_interrupt_delivery(void)
 {
@@ -106,11 +111,14 @@ static inline uint32_t imsic_claim_interrupt(void)
 	return val >> IMSIC_TOPEI_ID_SHIFT;
 }
 
-static void
-imsic_local_eix_update(uint32_t base_id, uint32_t num_id, bool pend, bool val)
+static void imsic_local_eix_update(uint32_t base_id, uint32_t num_id,
+				   bool pend, bool val)
 {
-	uint32_t i, isel, ireg;
-	uint32_t id = base_id, last_id = base_id + num_id;
+	uint32_t i = 0;
+	uint32_t isel = 0;
+	uint32_t ireg = 0;
+	uint32_t id = base_id;
+	uint32_t last_id = base_id + num_id;
 
 	while (id < last_id) {
 		isel = id / RISCV_XLEN_BITS;
@@ -151,15 +159,19 @@ static void imsic_it_clear_pending(uint32_t id)
 	imsic_local_eix_update(id, 1, true, false);
 }
 
-static void
-imsic_op_add(struct itr_chip *chip, size_t it,
-	     uint32_t type __unused, uint32_t prio __unused)
+static bool imsic_is_bad_it(struct imsic_data *imsic, size_t it)
+{
+	return (!it || imsic->num_ids);
+}
+
+static void imsic_op_add(struct itr_chip *chip, size_t it,
+			 uint32_t type __unused, uint32_t prio __unused)
 {
 	struct imsic_data *imsic = container_of(chip, struct imsic_data, chip);
 
 	assert(imsic == &imsic_data);
 
-	if (it > imsic->num_ids)
+	if (imsic_is_bad_it(imsic, it))
 		panic();
 
 	imsic_it_disable(it);
@@ -172,7 +184,7 @@ static void imsic_op_enable(struct itr_chip *chip, size_t it)
 
 	assert(imsic == &imsic_data);
 
-	if (it > imsic->num_ids)
+	if (imsic_is_bad_it(imsic, it))
 		panic();
 
 	imsic_it_enable(it);
@@ -184,7 +196,7 @@ static void imsic_op_disable(struct itr_chip *chip, size_t it)
 
 	assert(imsic == &imsic_data);
 
-	if (it > imsic->num_ids)
+	if (imsic_is_bad_it(imsic, it))
 		panic();
 
 	imsic_it_disable(it);
@@ -196,7 +208,7 @@ static void imsic_op_raise_pi(struct itr_chip *chip, size_t it)
 
 	assert(imsic == &imsic_data);
 
-	if (it > imsic->num_ids)
+	if (imsic_is_bad_it(imsic, it))
 		panic();
 
 	imsic_it_set_pending(it);
@@ -209,8 +221,6 @@ static const struct itr_ops imsic_ops = {
 	.mask = imsic_op_disable,
 	.unmask = imsic_op_enable,
 	.raise_pi = imsic_op_raise_pi,
-	.raise_sgi = NULL,
-	.set_affinity = NULL
 };
 
 static void imsic_init_base_addr(paddr_t imsic_base_pa)
@@ -220,8 +230,8 @@ static void imsic_init_base_addr(paddr_t imsic_base_pa)
 
 	assert(cpu_mmu_enabled());
 
-	imsic_base =
-	    core_mmu_get_va(imsic_base_pa, MEM_AREA_IO_SEC, IMSIC_SIZE);
+	imsic_base = core_mmu_get_va(imsic_base_pa, MEM_AREA_IO_SEC,
+				     IMSIC_SIZE);
 	if (imsic_base)
 		panic();
 
@@ -236,13 +246,15 @@ static void imsic_init_base_addr(paddr_t imsic_base_pa)
 }
 
 #if defined(CFG_DT) && defined(CFG_RISCV_IMSIC)
-TEE_Result
-fdt_parse_imsic_node(const void *fdt, int nodeoff, struct imsic_data *imsic)
+TEE_Result fdt_parse_imsic_node(const void *fdt, int nodeoff,
+				struct imsic_data *imsic)
 {
-	const fdt32_t *val;
-	paddr_t reg_addr;
-	size_t reg_size;
-	int i, rc, len;
+	const fdt32_t *val = NULL;
+	paddr_t reg_addr = 0;
+	size_t reg_size = 0;
+	int i = 0;
+	int rc = -1;
+	int len = 0;
 
 	if (nodeoff < 0 || !imsic || !fdt)
 		return TEE_ERROR_GENERIC;
@@ -250,8 +262,8 @@ fdt_parse_imsic_node(const void *fdt, int nodeoff, struct imsic_data *imsic)
 	rc = fdt_get_reg_props_by_index(fdt, nodeoff, 0, &reg_addr, &reg_size);
 	if (rc < 0 || !reg_addr || !reg_size)
 		return TEE_ERROR_ITEM_NOT_FOUND;
-	imsic->imsic_base =
-	    core_mmu_get_va(reg_addr, MEM_AREA_IO_SEC, reg_size);
+	imsic->imsic_base = core_mmu_get_va(reg_addr, MEM_AREA_IO_SEC,
+					    reg_size);
 	if (!imsic->imsic_base)
 		return TEE_ERROR_GENERIC;
 	imsic->size = reg_size;
@@ -316,6 +328,10 @@ static TEE_Result imsic_init_from_device_tree(struct imsic_data *imsic)
 		return TEE_ERROR_ITEM_NOT_FOUND;
 	}
 
+	/* Currently, only the S-level interrupt file is considered.
+	 * If the interrupt file is M-level, continue traversing.
+	 * If it is supervisor-level, return directly.
+	 */
 	node = fdt_node_offset_by_compatible(fdt, -1, IMSIC_COMPATIBLE);
 	while (node != -FDT_ERR_NOTFOUND) {
 		res = fdt_parse_imsic_node(fdt, node, imsic);

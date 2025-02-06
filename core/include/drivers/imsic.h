@@ -1,14 +1,20 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /*
+ * Copyright (c) 2021 Western Digital Corporation or its affiliates.
+ * Copyright (c) 2022 Ventana Micro Systems Inc.
  * Copyright (c) 2025 Beijing Institute of Open Source Chip (BOSC)
+ *
+ * Authors:
+ *   Anup Patel <anup.patel@wdc.com>
+ *   Huang Borong <huangborong@bosc.ac.cn>
  */
 
 #ifndef __DRIVERS_IMSIC_H
 #define __DRIVERS_IMSIC_H
 
-#include <types_ext.h>
-#include <tee_api_defines.h>
 #include <kernel/interrupt.h>
+#include <tee_api_defines.h>
+#include <types_ext.h>
 
 struct imsic_data {
 	vaddr_t imsic_base;
