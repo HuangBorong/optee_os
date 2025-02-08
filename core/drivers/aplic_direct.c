@@ -140,11 +140,15 @@ static const struct itr_ops aplic_ops = {
 void aplic_init(paddr_t aplic_base_pa)
 {
 	struct aplic_data *aplic = &aplic_data;
+	TEE_Result res = TEE_ERROR_GENERIC;
 
-	if (IS_ENABLED(CFG_DT))
-		aplic_init_from_device_tree(aplic);
-	else
+	if (IS_ENABLED(CFG_DT)) {
+		res = aplic_init_from_device_tree(aplic);
+		if (res)
+			panic();
+	} else {
 		aplic_init_base_addr(aplic, aplic_base_pa);
+	}
 
 	aplic->chip.ops = &aplic_ops;
 

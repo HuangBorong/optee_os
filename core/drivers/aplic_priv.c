@@ -35,7 +35,7 @@ static TEE_Result fdt_parse_aplic_node(const void *fdt, int nodeoff,
 	TEE_Result res = TEE_ERROR_GENERIC;
 
 	if (nodeoff < 0 || !aplic || !fdt)
-		return TEE_ERROR_GENERIC;
+		return TEE_ERROR_BAD_PARAMETERS;
 	memset(aplic, 0, sizeof(*aplic));
 
 	rc = fdt_get_reg_props_by_index(fdt, nodeoff, 0, &reg_addr, &reg_size);
@@ -52,7 +52,7 @@ static TEE_Result fdt_parse_aplic_node(const void *fdt, int nodeoff,
 		aplic->num_source = fdt32_to_cpu(*val);
 
 	val = fdt_getprop(fdt, nodeoff, "interrupts-extended", &len);
-	if (val && (size_t)len > sizeof(fdt32_t)) {
+	if (val && (size_t)len >= (2 * sizeof(fdt32_t))) {
 		len = len / sizeof(fdt32_t);
 		for (i = 0; i < len; i += 2) {
 			if (fdt32_to_cpu(val[i + 1]) == IRQ_M_EXT) {
@@ -61,7 +61,9 @@ static TEE_Result fdt_parse_aplic_node(const void *fdt, int nodeoff,
 			}
 		}
 		aplic->num_idc = len / 2;
-	} else {
+
+		return TEE_SUCCESS;
+	} else if (!val) {
 		val = fdt_getprop(fdt, nodeoff, "msi-parent", &len);
 		if (val && (size_t)len >= sizeof(fdt32_t)) {
 			noff = fdt_node_offset_by_phandle(fdt,
@@ -74,10 +76,11 @@ static TEE_Result fdt_parse_aplic_node(const void *fdt, int nodeoff,
 				return res;
 
 			aplic->targets_mmode = imsic.targets_mmode;
+
+			return TEE_SUCCESS;
 		}
 	}
-
-	return TEE_SUCCESS;
+	return TEE_ERROR_ITEM_NOT_FOUND;
 }
 
 TEE_Result aplic_init_from_device_tree(struct aplic_data *aplic)
@@ -92,15 +95,16 @@ TEE_Result aplic_init_from_device_tree(struct aplic_data *aplic)
 		return TEE_ERROR_ITEM_NOT_FOUND;
 	}
 
-	/* Currently, only the S-level interrupt domain is considered.
+	/*
+	 * Currently, only the S-level interrupt domain is considered.
 	 * If the interrupt domain is M-level, continue traversing.
 	 * If it is supervisor-level, return directly.
 	 */
 	node = fdt_node_offset_by_compatible(fdt, -1, APLIC_COMPATIBLE);
-	while (node != FDT_ERR_NOTFOUND) {
+	while (node != -FDT_ERR_NOTFOUND) {
 		res = fdt_parse_aplic_node(fdt, node, aplic);
 		if (res) {
-			EMSG("Parse IMSIC node failed");
+			EMSG("Parse APLIC node failed");
 			return res;
 		}
 
@@ -144,7 +148,7 @@ TEE_Result aplic_set_source_mode(struct aplic_data *aplic, uint32_t source,
 	}
 
 	sourcecfg = aplic->aplic_base + APLIC_SOURCECFG_BASE +
-	    (source - 1) * sizeof(uint32_t);
+				(source - 1) * sizeof(uint32_t);
 	io_write32(sourcecfg, sm);
 
 	return TEE_SUCCESS;

@@ -4,6 +4,7 @@
  */
 
 #include <assert.h>
+#include <compiler.h>
 #include <config.h>
 #include <drivers/aplic.h>
 #include <drivers/aplic_priv.h>
@@ -34,15 +35,16 @@ static void aplic_set_target(struct aplic_data *aplic, uint32_t source,
 	val = SHIFT_U32(hart_idx & APLIC_TARGET_HART_IDX_MASK,
 			APLIC_TARGET_HART_IDX_SHIFT);
 	val |= SHIFT_U32(guest_idx & APLIC_TARGET_GUEST_IDX_MASK,
-			APLIC_TARGET_GUEST_IDX_SHIFT);
+			 APLIC_TARGET_GUEST_IDX_SHIFT);
 	val |= (eiid & APLIC_TARGET_EIID_MASK);
 
 	target = aplic->aplic_base + APLIC_TARGET_BASE +
-		(source - 1) * sizeof(uint32_t);
+	    (source - 1) * sizeof(uint32_t);
 	io_write32(target, val);
 }
 
-static uint32_t aplic_get_source_mode(struct aplic_data *aplic, uint32_t source)
+static uint32_t __unused aplic_get_source_mode(struct aplic_data *aplic,
+					       uint32_t source)
 {
 	uint32_t sm = 0;
 
@@ -129,11 +131,15 @@ static const struct itr_ops aplic_ops = {
 void aplic_init(paddr_t aplic_base_pa)
 {
 	struct aplic_data *aplic = &aplic_data;
+	TEE_Result res = TEE_ERROR_GENERIC;
 
-	if (IS_ENABLED(CFG_DT))
-		aplic_init_from_device_tree(aplic);
-	else
+	if (IS_ENABLED(CFG_DT)) {
+		res = aplic_init_from_device_tree(aplic);
+		if (res)
+			panic();
+	} else {
 		aplic_init_base_addr(aplic, aplic_base_pa);
+	}
 
 	aplic->chip.ops = &aplic_ops;
 

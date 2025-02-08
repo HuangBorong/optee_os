@@ -18,7 +18,7 @@
 #include <util.h>
 
 #define APLIC_MAX_SOURCE                  1024
-#define APLIC_COMPATIBLE                "riscv,aplic"
+#define APLIC_COMPATIBLE                  "riscv,aplic"
 
 /* APLIC registers */
 #define APLIC_DOMAINCFG                   0x0000
