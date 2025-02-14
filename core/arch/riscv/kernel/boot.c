@@ -185,3 +185,9 @@ void boot_init_secondary(unsigned long nsec_entry __unused)
 {
 	init_secondary_helper(PADDR_INVALID);
 }
+
+void enable_interrupt(void)
+{
+	set_csr(CSR_XIE, CSR_XIE_SIE | CSR_XIE_TIE | CSR_XIE_EIE);
+	set_csr(CSR_XSTATUS, CSR_XSTATUS_IE | CSR_XSTATUS_SPP);
+}

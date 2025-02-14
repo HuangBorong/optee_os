@@ -44,6 +44,14 @@ void __weak console_putc(int ch)
 	serial_console->ops->putc(serial_console, ch);
 }
 
+int __weak console_getc(void)
+{
+	if (!serial_console || !serial_console->ops->getchar)
+		return -1;
+
+	return serial_console->ops->getchar(serial_console);
+}
+
 void __weak console_flush(void)
 {
 	if (!serial_console || !serial_console->ops->flush)
