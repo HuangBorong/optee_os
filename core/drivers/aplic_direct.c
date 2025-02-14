@@ -182,6 +182,8 @@ void aplic_it_handle(void)
 	struct aplic_data *aplic = &aplic_data;
 	uint32_t id = aplic_claim_interrupt();
 
+	IMSG("ID: %u", id);
+
 	if (id > 0 && id <= aplic->num_source)
 		interrupt_call_handlers(&aplic->chip, id);
 	else
@@ -189,5 +191,31 @@ void aplic_it_handle(void)
 }
 
 void aplic_dump_state(void)
-{
+{	
+	int i;
+	uint32_t val;
+	struct aplic_data *aplic = &aplic_data;
+	vaddr_t idc_base = aplic_get_idc_base();
+
+	val = io_read32(aplic->aplic_base + APLIC_DOMAINCFG);
+	IMSG("APLIC_DOMAINCFG: 0x%x", val);
+	
+	for (i = 0; i < APLIC_NUM_SOURCE; i++)
+	{
+		val = io_read32(aplic->aplic_base + APLIC_SOURCECFG_BASE + i * 4);
+		IMSG("APLIC_SOURCECFG[%u]: 0x%x", (i + 1), val);
+	}
+
+	for (i = 0; i < APLIC_NUM_SOURCE; i++)
+	{
+		val = io_read32(aplic->aplic_base + APLIC_TARGET_BASE + i * 4);
+		IMSG("APLIC_TARGET[%u]: 0x%x", (i + 1), val);
+	}
+	
+	val = io_read32(idc_base + APLIC_IDC_IDELIVERY);
+	IMSG("APLIC_IDC_IDELIVERY: 0x%x", val);
+	val = io_read32(idc_base + APLIC_IDC_ITHRESHOLD);
+	IMSG("APLIC_IDC_ITHRESHOLD: 0x%x", val);
+	val = io_read32(idc_base + APLIC_IDC_TOPI);
+	IMSG("APLIC_IDC_TOPI: 0x%x", val);
 }

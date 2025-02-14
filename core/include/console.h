@@ -13,6 +13,7 @@
 void console_init(void);
 void console_putc(int ch);
 void console_flush(void);
+int console_getc(void);
 
 void plat_console_init(void);
 

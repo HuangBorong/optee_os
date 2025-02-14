@@ -227,6 +227,9 @@ UNWIND(	.cantunwind)
 	jal	boot_init_primary_late
 	jal	boot_init_primary_final
 
+	jal enable_interrupt
+	jal main_loop	
+
 	/*
 	 * After returning from boot_init_primary_late(), the flag and sp are
 	 * restored.
@@ -241,13 +244,7 @@ UNWIND(	.cantunwind)
 
 	jal	thread_clr_boot_thread
 
-	li	a0, TEEABI_OPTEED_RETURN_ENTRY_DONE
-	la	a1, thread_vector_table
-	li	a2, 0
-	li	a3, 0
-	li	a4, 0
-	li	a5, 0
-	j	thread_return_to_udomain
+	j	.
 END_FUNC reset_primary
 
 LOCAL_FUNC reset_secondary , : , .identity_map
@@ -260,16 +257,8 @@ UNWIND(	.cantunwind)
 	cpu_is_ready
 
 	jal	boot_init_secondary
-#ifdef CFG_RISCV_WITH_M_MODE_SM
-	/* Return to untrusted domain */
-	li	a0, TEEABI_OPTEED_RETURN_ON_DONE
-	li	a1, 0
-	li	a2, 0
-	li	a3, 0
-	li	a4, 0
-	li	a5, 0
-	j	thread_return_to_udomain
-#endif
+
+	jal enable_interrupt
 	j	.
 END_FUNC reset_secondary
 
