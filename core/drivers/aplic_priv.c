@@ -17,7 +17,6 @@
 #include <kernel/dt.h>
 #include <kernel/dt_driver.h>
 #include <libfdt.h>
-#include <string.h>
 #include <tee_api_types.h>
 #include <trace.h>
 
@@ -36,9 +35,8 @@ static TEE_Result fdt_parse_aplic_node(const void *fdt, int nodeoff,
 
 	if (nodeoff < 0 || !aplic || !fdt)
 		return TEE_ERROR_BAD_PARAMETERS;
-	memset(aplic, 0, sizeof(*aplic));
 
-	rc = fdt_get_reg_props_by_index(fdt, nodeoff, 0, &reg_addr, &reg_size);
+	rc = fdt_reg_info(fdt, nodeoff, &reg_addr, &reg_size);
 	if (rc < 0 || !reg_addr || !reg_size)
 		return TEE_ERROR_ITEM_NOT_FOUND;
 	aplic->aplic_base = core_mmu_get_va(reg_addr, MEM_AREA_IO_SEC,
@@ -98,7 +96,7 @@ TEE_Result aplic_init_from_device_tree(struct aplic_data *aplic)
 	/*
 	 * Currently, only the S-level interrupt domain is considered.
 	 * If the interrupt domain is M-level, continue traversing.
-	 * If it is supervisor-level, return directly.
+	 * If it is S-level, return directly.
 	 */
 	node = fdt_node_offset_by_compatible(fdt, -1, APLIC_COMPATIBLE);
 	while (node != -FDT_ERR_NOTFOUND) {
@@ -114,9 +112,6 @@ TEE_Result aplic_init_from_device_tree(struct aplic_data *aplic)
 		node = fdt_node_offset_by_compatible(fdt, node,
 						     APLIC_COMPATIBLE);
 	}
-
-	if (aplic->targets_mmode)
-		free(aplic);
 
 	return TEE_ERROR_ITEM_NOT_FOUND;
 }

@@ -48,7 +48,7 @@ void imsic_it_handle(void);
 void imsic_dump_state(void);
 
 #if defined(CFG_DT) && defined(CFG_RISCV_IMSIC)
-/**
+/*
  * fdt_parse_imsic_node() - Parse the IMSIC node from the device tree
  *
  * @fdt: Device tree to work on

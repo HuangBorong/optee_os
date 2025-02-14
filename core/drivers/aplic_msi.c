@@ -32,11 +32,11 @@ static void aplic_set_target(struct aplic_data *aplic, uint32_t source,
 	vaddr_t target = 0;
 	uint32_t val = 0;
 
-	val = SHIFT_U32(hart_idx & APLIC_TARGET_HART_IDX_MASK,
-			APLIC_TARGET_HART_IDX_SHIFT);
-	val |= SHIFT_U32(guest_idx & APLIC_TARGET_GUEST_IDX_MASK,
-			 APLIC_TARGET_GUEST_IDX_SHIFT);
-	val |= (eiid & APLIC_TARGET_EIID_MASK);
+	val = SHIFT_U32(hart_idx, APLIC_TARGET_HART_IDX_SHIFT) &
+		APLIC_TARGET_HART_IDX_MASK;
+	val |= SHIFT_U32(guest_idx, APLIC_TARGET_GUEST_IDX_SHIFT) &
+		APLIC_TARGET_GUEST_IDX_MASK;
+	val |= eiid & APLIC_TARGET_EIID_MASK;
 
 	target = aplic->aplic_base + APLIC_TARGET_BASE +
 	    (source - 1) * sizeof(uint32_t);

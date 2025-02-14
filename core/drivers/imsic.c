@@ -249,7 +249,7 @@ TEE_Result fdt_parse_imsic_node(const void *fdt, int nodeoff,
 	if (nodeoff < 0 || !imsic || !fdt)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	rc = fdt_get_reg_props_by_index(fdt, nodeoff, 0, &reg_addr, &reg_size);
+	rc = fdt_reg_info(fdt, nodeoff, &reg_addr, &reg_size);
 	if (rc < 0 || !reg_addr || !reg_size)
 		return TEE_ERROR_ITEM_NOT_FOUND;
 	imsic->imsic_base = core_mmu_get_va(reg_addr, MEM_AREA_IO_SEC,
@@ -321,7 +321,7 @@ static TEE_Result imsic_init_from_device_tree(struct imsic_data *imsic)
 	/*
 	 * Currently, only the S-level interrupt file is considered.
 	 * If the interrupt file is M-level, continue traversing.
-	 * If it is supervisor-level, return directly.
+	 * If it is S-level, return directly.
 	 */
 	node = fdt_node_offset_by_compatible(fdt, -1, IMSIC_COMPATIBLE);
 	while (node != -FDT_ERR_NOTFOUND) {

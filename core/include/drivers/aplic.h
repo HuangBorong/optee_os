@@ -24,7 +24,7 @@ void aplic_init_per_hart(void);
 /* Handle external interrupts */
 void aplic_it_handle(void);
 
-/* Print IMSIC state to console */
+/* Print APLIC state to console */
 void aplic_dump_state(void);
 
 #endif /*__DRIVERS_APLIC_H*/

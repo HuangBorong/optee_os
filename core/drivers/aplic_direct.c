@@ -49,14 +49,25 @@ static vaddr_t aplic_get_idc_base(void)
 	return aplic->aplic_base + APLIC_IDC_BASE + hartid * APLIC_IDC_SIZE;
 }
 
+static uint32_t aplic_claim_interrupt(struct aplic_data *aplic)
+{
+	uint32_t id = 0;
+	vaddr_t idc_base = aplic_get_idc_base();
+
+	id = io_read32(idc_base + APLIC_IDC_CLAIMI);
+	id >>= APLIC_IDC_TOPI_ID_SHIFT;
+
+	return id;
+}
+
 static void aplic_set_target(struct aplic_data *aplic, uint32_t source,
 			     uint32_t hart_idx, uint32_t iprio)
 {
 	vaddr_t target = 0;
 	uint32_t val = 0;
 
-	val = SHIFT_U32(hart_idx & APLIC_TARGET_HART_IDX_MASK,
-			APLIC_TARGET_HART_IDX_SHIFT);
+	val = SHIFT_U32(hart_idx, APLIC_TARGET_HART_IDX_SHIFT) &
+		APLIC_TARGET_HART_IDX_MASK;
 	val |= iprio & APLIC_TARGET_IPRIO_MASK;
 
 	target = aplic->aplic_base + APLIC_TARGET_BASE +
@@ -169,12 +180,9 @@ void aplic_init_per_hart(void)
 void aplic_it_handle(void)
 {
 	struct aplic_data *aplic = &aplic_data;
-	uint32_t id = 0;
+	uint32_t id = aplic_claim_interrupt(aplic);
 
-	id = io_read32(aplic->aplic_base + APLIC_IDC_CLAIMI);
-	id >>= APLIC_IDC_TOPI_ID_SHIFT;
-
-	if (id <= aplic->num_source)
+	if (id > 0 && id <= aplic->num_source)
 		interrupt_call_handlers(&aplic->chip, id);
 	else
 		DMSG("ignoring interrupt %" PRIu32, id);
