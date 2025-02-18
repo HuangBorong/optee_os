@@ -282,7 +282,8 @@ TEE_Result fdt_parse_imsic_node(const void *fdt, int nodeoff,
 	if (val && len > 0)
 		imsic->hart_index_bits = fdt32_to_cpu(*val);
 	else
-		imsic->hart_index_bits = IMSIC_HART_INDEX_BITS;
+		imsic->hart_index_bits = 32 -
+			__builtin_clz(CFG_TEE_CORE_NB_CORE - 1);
 
 	val = fdt_getprop(fdt, nodeoff, "riscv,group-index-bits", &len);
 	if (val && len > 0)

@@ -18,10 +18,14 @@ register_ddr(DRAM_BASE, DRAM_SIZE);
 
 register_phys_mem_pgdir(MEM_AREA_IO_NSEC, UART0_BASE,
 			CORE_MMU_PGDIR_SIZE);
+#if defined(CFG_RISCV_APLIC) || defined(CFG_RISCV_APLIC_MSI)
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, APLIC_BASE,
 			APLIC_SIZE);
+#endif
+#if defined(CFG_RISCV_APLIC_MSI) && defined(CFG_RISCV_IMSIC)
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, IMSIC_BASE,
 			IMSIC_SIZE);
+#endif
 
 #ifdef CFG_RISCV_PLIC
 void boot_primary_init_intc(void)
