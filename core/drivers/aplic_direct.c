@@ -191,3 +191,8 @@ void aplic_it_handle(void)
 void aplic_dump_state(void)
 {
 }
+
+void* get_aplic_data(void)
+{
+	return NULL;
+}

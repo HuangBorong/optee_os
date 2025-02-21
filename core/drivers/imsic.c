@@ -163,13 +163,14 @@ static bool imsic_is_bad_it(struct imsic_data *imsic, size_t it)
 }
 
 static void imsic_op_add(struct itr_chip *chip, size_t it,
-			 uint32_t type __unused, uint32_t prio __unused)
+			 uint32_t type, uint32_t prio __unused)
 {
 	struct imsic_data *imsic = container_of(chip, struct imsic_data, chip);
 
 	if (imsic_is_bad_it(imsic, it))
 		panic();
 
+	interrupt_configure(&imsic->aplic->chip, it, type, prio);
 	imsic_it_disable(it);
 	imsic_it_clear_pending(it);
 }
@@ -181,6 +182,7 @@ static void imsic_op_enable(struct itr_chip *chip, size_t it)
 	if (imsic_is_bad_it(imsic, it))
 		panic();
 
+	interrupt_enable(&imsic->aplic->chip, it);
 	imsic_it_enable(it);
 }
 
@@ -191,6 +193,7 @@ static void imsic_op_disable(struct itr_chip *chip, size_t it)
 	if (imsic_is_bad_it(imsic, it))
 		panic();
 
+	interrupt_disable(&imsic->aplic->chip, it);
 	imsic_it_disable(it);
 }
 
@@ -201,6 +204,7 @@ static void imsic_op_raise_pi(struct itr_chip *chip, size_t it)
 	if (imsic_is_bad_it(imsic, it))
 		panic();
 
+	interrupt_raise_pi(&imsic->aplic->chip, it);
 	imsic_it_set_pending(it);
 }
 
@@ -379,6 +383,8 @@ void imsic_init(paddr_t imsic_base_pa)
 	imsic->chip.ops = &imsic_ops;
 
 	imsic_init_per_hart();
+
+	imsic->aplic = get_aplic_data();
 
 	interrupt_main_init(&imsic->chip);
 }

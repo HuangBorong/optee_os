@@ -21,8 +21,6 @@
 #include <types_ext.h>
 #include <util.h>
 
-#define APLIC_DEFAULT_EIID		2
-
 static struct aplic_data aplic_data __nex_bss;
 
 static void aplic_set_target(struct aplic_data *aplic, uint32_t source,
@@ -86,7 +84,7 @@ static void aplic_op_add(struct itr_chip *chip, size_t it, uint32_t type,
 	if (aplic_set_source_mode(aplic, it, type))
 		panic();
 
-	aplic_set_target(aplic, it, hartid, 0, APLIC_DEFAULT_EIID);
+	aplic_set_target(aplic, it, hartid, 0, it);
 }
 
 static void aplic_op_enable(struct itr_chip *chip, size_t it)
@@ -157,4 +155,9 @@ void aplic_it_handle(void)
 
 void aplic_dump_state(void)
 {
+}
+
+struct aplic_data* get_aplic_data(void)
+{
+	return &aplic_data;
 }

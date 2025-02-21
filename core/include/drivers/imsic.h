@@ -12,6 +12,7 @@
 #ifndef __DRIVERS_IMSIC_H
 #define __DRIVERS_IMSIC_H
 
+#include <drivers/aplic_priv.h>
 #include <kernel/interrupt.h>
 #include <tee_api_defines.h>
 #include <types_ext.h>
@@ -25,6 +26,7 @@ struct imsic_data {
 	uint32_t hart_index_bits;
 	uint32_t group_index_bits;
 	uint32_t group_index_shift;
+	struct aplic_data* aplic;
 	struct itr_chip chip;
 };
 
