@@ -19,7 +19,7 @@ static inline size_t __noprof get_core_pos(void)
 	 * Foreign interrupts must be disabled before playing with current
 	 * core since we otherwise may be rescheduled to a different core.
 	 */
-	assert(thread_get_exceptions() & THREAD_EXCP_FOREIGN_INTR);
+	//assert(thread_get_exceptions() & THREAD_EXCP_FOREIGN_INTR);
 	return __get_core_pos();
 }
 

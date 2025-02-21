@@ -114,8 +114,9 @@ void ns16550_init(struct ns16550_data *pd, paddr_t base, uint8_t io_width,
 	pd->reg_shift = reg_shift;
 	pd->chip.ops = &ns16550_ops;
 
-	/*
-	 * Do nothing, uart driver shared with normal world,
-	 * everything for uart driver initialization is done in bootloader.
+	/* 
+	 * Most part of uart driver initialization is done in OpenSBI,
+	 * only enable the receiver ready interrupt here.
 	 */
+	serial_out(base + UART_IER, pd->io_width, 0x01);
 }
