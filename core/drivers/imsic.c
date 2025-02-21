@@ -64,7 +64,7 @@ static void imsic_csr_write(unsigned long reg, unsigned long val)
 	write_csr(CSR_XIREG, val);
 }
 
-static unsigned long __unused imsic_csr_read(unsigned long reg)
+static unsigned long imsic_csr_read(unsigned long reg)
 {
 	write_csr(CSR_XISELECT, reg);
 	return read_csr(CSR_XIREG);
@@ -159,7 +159,7 @@ static void imsic_it_clear_pending(uint32_t id)
 static bool imsic_is_bad_it(struct imsic_data *imsic, size_t it)
 {
 	assert(imsic == &imsic_data);
-	return (!it || imsic->num_ids);
+	return (!it || it > imsic->num_ids);
 }
 
 static void imsic_op_add(struct itr_chip *chip, size_t it,
@@ -349,6 +349,8 @@ void imsic_it_handle(void)
 	struct imsic_data *imsic = &imsic_data;
 	uint32_t id = imsic_claim_interrupt();
 
+	IMSG("Interrupt: %u", id);
+
 	if (id == IMSIC_IPI_ID)
 		DMSG("Interprocessor interrupt");
 
@@ -387,4 +389,23 @@ void imsic_init(paddr_t imsic_base_pa)
 	imsic->aplic = get_aplic_data();
 
 	interrupt_main_init(&imsic->chip);
+}
+
+void imsic_dump_state(void)
+{
+	unsigned long val;
+
+	val = imsic_csr_read(IMSIC_EIDELIVERY);
+	IMSG("eidelivery: %lx", val);
+	val = imsic_csr_read(IMSIC_EITHRESHOLD);
+	IMSG("eithreshold: %lx", val);
+
+	val = imsic_csr_read(IMSIC_EIE0);
+	IMSG("eie[0]: %lx", val);
+	val = imsic_csr_read(IMSIC_EIE0 + 2);
+	IMSG("eie[2]: %lx", val);
+	val = imsic_csr_read(IMSIC_EIE0 + 4);
+	IMSG("eie[4]: %lx", val);
+	val = imsic_csr_read(IMSIC_EIE0 + 6);
+	IMSG("eie[6]: %lx", val);
 }

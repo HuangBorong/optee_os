@@ -108,21 +108,6 @@ interrupt_from_kernel:
 	sub	a2, a1, a2
 	li	a3, 1
 	sll	a3, a3, a2
-	/*
-	 * Compare built XIP with THREAD_EXCP_FOREIGN_INTR. If XIP is one of
-	 * THREAD_EXCP_FOREIGN_INTR, we call thread_foreign_interrupt_handler().
-	 */
-	li	a2, THREAD_EXCP_FOREIGN_INTR
-	and	a2, a3, a2
-	beqz	a2, native_interrupt_from_kernel
-
-foreign_interrupt_from_kernel:
-	/*
-	 * a0 = struct thread_ctx_regs *regs
-	 * Tail call thread_foreign_interrupt_handler(regs) since we will not
-	 * return to here.
-	 */
-	tail	thread_foreign_interrupt_handler
 
 native_interrupt_from_kernel:
 	/* Update 32-bit core local flags */

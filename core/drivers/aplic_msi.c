@@ -155,6 +155,24 @@ void aplic_it_handle(void)
 
 void aplic_dump_state(void)
 {
+	int i;
+	uint32_t val;
+	struct aplic_data *aplic = &aplic_data;
+
+	val = io_read32(aplic->aplic_base + APLIC_DOMAINCFG);
+	IMSG("APLIC_DOMAINCFG: 0x%x", val);
+	
+	for (i = 0; i < APLIC_NUM_SOURCE; i++)
+	{
+		val = io_read32(aplic->aplic_base + APLIC_SOURCECFG_BASE + i * 4);
+		IMSG("APLIC_SOURCECFG[%u]: 0x%x", (i + 1), val);
+	}
+
+	for (i = 0; i < APLIC_NUM_SOURCE; i++)
+	{
+		val = io_read32(aplic->aplic_base + APLIC_TARGET_BASE + i * 4);
+		IMSG("APLIC_TARGET[%u]: 0x%x", (i + 1), val);
+	}
 }
 
 struct aplic_data* get_aplic_data(void)
